@@ -84,14 +84,11 @@ library BoolUtils {
     }
 
     /**
-     * @dev Converts a bytes32 value to a boolean value by performing a bitwise AND operation between the input bytes32 `value` and 1.
-     * If the least significant bit of the bytes32 value is 1, the result of the AND operation will be 1 -> true.
-     * If the least significant bit is 0, the result of the AND operation will be 0 -> false.
-     * 
+     * @dev Converts a bytes32 value to a boolean value.
      * @param value The bytes32 value to be converted.
-     * @return The boolean value converted from the bytes32 value.
+     * @return The boolean value.
      */
     function bytes32ToBool(bytes32 value) internal pure returns (bool) {
-        return (value & bytes32(uint256(1))) != 0;
+        return value != bytes32(0);
     }
 }
