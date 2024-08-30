@@ -18,7 +18,7 @@ const deployment = DeploymentStorage.Env[Constants.ENV_KEY];
     for (let contractItem in deployment) {
         if (ABIs.hasOwnProperty(contractItem)) {
             let abi = ABIs[contractItem];
-            let contract = new zksync.Contract(Addresses[contractItem], abi);
+            let contract = new ethers.Contract(Addresses[contractItem], abi);
             Contracts[contractItem] = contract;
 
             const funcList = abi.filter(
