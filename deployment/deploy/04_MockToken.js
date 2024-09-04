@@ -3,16 +3,16 @@ const { DeployHelper } = require("../utils");
 async function main() {
     const CONTRACT_NAME = "MockToken";
     const tokens = [
+        // {
+        //     deploymentName: "MockUSDT",
+        //     name: "Test USDT",
+        //     symbol: "TUSDT",
+        //     decimals: 6,
+        // },
         {
-            deploymentName: "MockUSDT",
-            name: "Test USDT",
-            symbol: "TUSDT",
-            decimals: 6,
-        },
-        {
-            deploymentName: "MockUSDC",
-            name: "Test USDC",
-            symbol: "TUSDC",
+            deploymentName: "MockWUSD",
+            name: "Worldwide USD",
+            symbol: "WUSDC",
             decimals: 6,
         },
     ];
