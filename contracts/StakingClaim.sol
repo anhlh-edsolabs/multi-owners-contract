@@ -161,6 +161,14 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         // sanitize inputs
         Validation.noZeroAddress(account);
 
+        bytes32 verifyingKey = keccak256(
+            abi.encodePacked(account, claimableTimestamp, amount)
+        );
+
+        if(accessKey != verifyingKey) {
+            revert InvalidAccessKey(accessKey, verifyingKey);
+        }
+
         StakingClaimStorage storage $ = _getStakingClaimStorage();
 
         $._claims[account][accessKey] = Claim(amount, 0);
@@ -217,5 +225,15 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         );
 
         return MessageHashUtils.toTypedDataHash(domainSeparator, structHash);
+    }
+
+    function recoverSigner(
+        bytes32 digest,
+        bytes calldata combinedSignatures
+    ) public view returns (address[] memory) {
+        bytes[] memory signatures = SignatureHelper
+            .extractSignaturesFromCalldataInput(combinedSignatures);
+
+        return SignatureHelper.recoverAndValidateSigners(digest, signatures);
     }
 }

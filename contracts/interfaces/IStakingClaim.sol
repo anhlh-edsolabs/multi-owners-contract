@@ -17,6 +17,7 @@ interface IStakingClaim {
     error ClaimedAlready();
     error UnauthorizedSigner(address account);
     error CallerIsNotOwner(address account);
+    error InvalidAccessKey(bytes32 accessKey, bytes32 verifyingKey);
     error ExecutionForbidden();
     error ExecutionFailed(bytes payload, bytes returnData);
 
