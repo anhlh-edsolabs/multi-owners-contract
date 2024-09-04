@@ -5,7 +5,7 @@ const hre = require("hardhat");
 const { log } = require("console");
 
 async function init(printOutput = true) {
-    const [contractAdmin, firstOwner, secondOwner, thirdOwner] =
+    const [contractAdmin, firstOwner, secondOwner, thirdOwner, ...addrs] =
         await hre.ethers.getSigners();
 
     // deploy mock WUSD
@@ -44,7 +44,7 @@ async function init(printOutput = true) {
     }
 
     return {
-        accounts: [contractAdmin, firstOwner, secondOwner, thirdOwner],
+        accounts: [contractAdmin, firstOwner, secondOwner, thirdOwner, ...addrs],
         mockWUSDAddress,
         mockWUSDContract,
         stakingClaimAddress,
