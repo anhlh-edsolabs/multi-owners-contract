@@ -3,6 +3,8 @@ require("@openzeppelin/hardhat-upgrades");
 const ethers = require("ethers");
 const hre = require("hardhat");
 const { log } = require("console");
+const { Helper } = require("./helper");
+const { access } = require("fs");
 
 async function init(printOutput = true) {
     const [contractAdmin, firstOwner, secondOwner, thirdOwner, ...addrs] =
@@ -44,7 +46,13 @@ async function init(printOutput = true) {
     }
 
     return {
-        accounts: [contractAdmin, firstOwner, secondOwner, thirdOwner, ...addrs],
+        accounts: [
+            contractAdmin,
+            firstOwner,
+            secondOwner,
+            thirdOwner,
+            ...addrs,
+        ],
         mockWUSDAddress,
         mockWUSDContract,
         stakingClaimAddress,
@@ -52,4 +60,42 @@ async function init(printOutput = true) {
     };
 }
 
-module.exports = { init };
+async function createClaimData(
+    domain,
+    claimer,
+    claimableTimestamp,
+    claimAmount,
+) {
+    // const claimer = user1.address;
+    // const claimableTimestamp = 1725148800;
+    // const claimAmount = ethers.parseUnits("1000", 6);
+    const accessKey = ethers.solidityPackedKeccak256(
+        ["address", "uint48", "uint256"],
+        [claimer, claimableTimestamp, claimAmount],
+    );
+
+    const stakingClaim = await hre.ethers.getContractFactory("StakingClaim");
+
+    const selector =
+        stakingClaim.interface.getFunction("createClaimData").selector;
+    const inputData = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address", "uint48", "uint256", "bytes32"],
+        [claimer, claimableTimestamp, claimAmount, accessKey],
+    );
+
+    const payload = {
+        selector,
+        inputData,
+    };
+
+    const typedData = Helper.getTypedData(
+        domain,
+        Helper.FunctionCallType,
+        Object.keys(Helper.FunctionCallType)[0],
+        payload,
+    );
+
+    return [accessKey, typedData];
+}
+
+module.exports = { init, createClaimData };

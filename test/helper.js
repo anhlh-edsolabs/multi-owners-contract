@@ -1,6 +1,6 @@
-const { ethers } = require("ethers");
-const hre = require("hardhat");
-const { log } = require("console");
+// const { ethers } = require("ethers");
+// const hre = require("hardhat");
+// const { log } = require("console");
 
 const FunctionCallType = {
     FunctionCall: [
@@ -26,6 +26,23 @@ async function signTypedData(typedData, signer) {
     );
 }
 
+async function signTypedDataMultiple(typedData, signers) {
+    return Promise.all(
+        signers.map((signer) =>
+            signer.signTypedData(
+                typedData.domain,
+                typedData.types,
+                typedData.message,
+            ),
+        ),
+    );
+}
+
 module.exports = {
-    Helper: { FunctionCallType, getTypedData, signTypedData },
+    Helper: {
+        FunctionCallType,
+        getTypedData,
+        signTypedData,
+        signTypedDataMultiple,
+    },
 };
