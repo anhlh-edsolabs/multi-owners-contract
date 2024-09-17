@@ -15,6 +15,7 @@ struct ClaimData {
 
 interface IStakingClaim {
     error ClaimedAlready();
+    error OverwritingClaim(address account, bytes32 accessKey);
     error UnauthorizedSigner(address account);
     error CallerIsNotOwner(address account);
     error InvalidAccessKey(bytes32 accessKey, bytes32 verifyingKey);

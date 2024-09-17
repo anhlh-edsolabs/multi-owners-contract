@@ -22,7 +22,7 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
     address immutable BASE_TOKEN;
 
     /** Storage */
-    /// @custom:storage-location erc7201:stableFlow.storage.StakingClaimStorage
+    /// @custom:storage-location erc7201:stableFlow.storage.SoftStakingClaimStorage
     struct StakingClaimStorage {
         address[] _owners;
         // Claim data for each account: account => keccak256(abi.encodePacked(account, claimableTimestamp, amount)) => Claim
@@ -30,9 +30,9 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         mapping(address => bytes32[]) _claimList;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("stableFlow.storage.StakingClaimStorage")) - 1)) & ~bytes32(uint256(0xff))
+    // keccak256(abi.encode(uint256(keccak256("stableFlow.storage.SoftStakingClaimStorage")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant StakingClaimStorageSlot =
-        0x8836d492c5e2cfbf7d1687c3aa60033eb805b56c5198a18d2d4779501ea51700;
+        0x1bcf8f46d034a5097408092e714b2615fc1df5a12ad20c9e2a147a8c983af700;
 
     /** Read storage slot */
     function _getStakingClaimStorage()
@@ -122,7 +122,10 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         }(callPayload);
 
         if (!success) {
-            revert ExecutionFailed(callPayload, result);
+            // bubble up the revert reason from lower level call
+            assembly {
+                revert(add(result, 0x20), mload(result))
+            }
         }
 
         return success;
@@ -165,16 +168,29 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
             abi.encodePacked(account, claimableTimestamp, amount)
         );
 
-        if(accessKey != verifyingKey) {
+        if (accessKey != verifyingKey) {
             revert InvalidAccessKey(accessKey, verifyingKey);
         }
 
         StakingClaimStorage storage $ = _getStakingClaimStorage();
 
+        // check if claim already exists for this account and revert to prevent overwriting
+        if ($._claims[account][accessKey].amount > 0) {
+            revert OverwritingClaim(account, accessKey);
+        }
+
         $._claims[account][accessKey] = Claim(amount, 0);
         $._claimList[account].push(accessKey);
 
         emit ClaimDataCreated(account, claimableTimestamp, amount, accessKey);
+    }
+
+    function getClaimData(
+        address account,
+        bytes32 accessKey
+    ) external view returns (Claim memory) {
+        StakingClaimStorage storage $ = _getStakingClaimStorage();
+        return $._claims[account][accessKey];
     }
 
     function getBaseToken() external view returns (address) {
@@ -230,7 +246,7 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
     function recoverSigner(
         bytes32 digest,
         bytes calldata combinedSignatures
-    ) public view returns (address[] memory) {
+    ) public pure returns (address[] memory) {
         bytes[] memory signatures = SignatureHelper
             .extractSignaturesFromCalldataInput(combinedSignatures);
 
