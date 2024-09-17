@@ -2,8 +2,7 @@ const { ethers } = require("ethers");
 const { Constants, Deployer, DeploymentStorage } = require("./env");
 const { Utils } = require("./utils");
 
-const Contracts = {};
-const ABIs = {};
+const Contracts = {}, ABIs = {};
 const DeploymentInfo = DeploymentStorage.Env[Constants.ENV_KEY];
 const contractNames = DeploymentInfo ? Object.keys(DeploymentInfo) : [];
 for (const contractName of contractNames) {
