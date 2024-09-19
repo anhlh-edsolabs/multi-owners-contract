@@ -124,7 +124,13 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         if (!success) {
             // bubble up the revert reason from lower level call
             assembly {
-                revert(add(result, 0x20), mload(result))
+                // load the first 32 bytes of the `result` 
+                // which contains the length of the actual `result`
+                // and store it in `returnDataSize` variable
+                let returnDataSize := mload(result)
+                // skip 32 bytes (0x20) of `result` length to get to the actual data
+                // then revert the transaction with the actual 'result` data
+                revert(add(result, 0x20), returnDataSize)
             }
         }
 
