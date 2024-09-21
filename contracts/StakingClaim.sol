@@ -16,7 +16,9 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
 
     /** EIP712 type hashes */
     bytes32 constant EIP712_FUNCTION_CALL_TYPEHASH =
-        keccak256("FunctionCall(bytes4 selector,bytes inputData)");
+        keccak256(
+            "FunctionCall(uint256 nonce,bytes4 selector,bytes inputData)"
+        );
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     address immutable BASE_TOKEN;
@@ -28,6 +30,7 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         // Claim data for each account: account => keccak256(abi.encodePacked(account, claimableTimestamp, amount)) => Claim
         mapping(address => mapping(bytes32 => Claim)) _claims;
         mapping(address => bytes32[]) _claimList;
+        mapping(bytes4 => uint256) _nonce;
     }
 
     // keccak256(abi.encode(uint256(keccak256("stableFlow.storage.SoftStakingClaimStorage")) - 1)) & ~bytes32(uint256(0xff))
@@ -101,7 +104,17 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         bytes[] memory signatures = SignatureHelper
             .extractSignaturesFromCalldataInput(combinedSignatures);
 
-        bytes32 digest = getEIP712FunctionCallDigest(selector, inputData);
+        StakingClaimStorage storage $ = _getStakingClaimStorage();
+        uint256 nonce = $._nonce[selector];
+
+        bytes32 digest = getEIP712FunctionCallDigest(
+            nonce,
+            selector,
+            inputData
+        );
+
+        // increase nonce to prevent reuse
+        $._nonce[selector]++;
 
         // validate signers
         address[] memory signers = SignatureHelper.recoverAndValidateSigners(
@@ -218,10 +231,20 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         return false;
     }
 
+    function getBaseToken() external view returns (address) {
+        return BASE_TOKEN;
+    }
+
+    function getNonce(bytes4 selector) public view returns (uint256) {
+        StakingClaimStorage storage $ = _getStakingClaimStorage();
+        return $._nonce[selector];
+    }
+
     /*******************************************************/
     /** EIP-712 signature verification */
 
     function getEIP712FunctionCallStructHash(
+        uint256 nonce,
         bytes4 selector,
         bytes calldata inputData
     ) public pure returns (bytes32) {
@@ -229,6 +252,7 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
             keccak256(
                 abi.encode(
                     EIP712_FUNCTION_CALL_TYPEHASH,
+                    nonce,
                     selector,
                     keccak256(inputData)
                 )
@@ -236,12 +260,14 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
     }
 
     function getEIP712FunctionCallDigest(
+        uint256 nonce,
         bytes4 selector,
         bytes calldata inputData
     ) public view returns (bytes32) {
         bytes32 domainSeparator = _domainSeparatorV4();
 
         bytes32 structHash = getEIP712FunctionCallStructHash(
+            nonce,
             selector,
             inputData
         );
