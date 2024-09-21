@@ -18,6 +18,7 @@ interface IStakingClaim {
     error OverwritingClaim(address account, bytes32 accessKey);
     error UnauthorizedSigner(address account);
     error CallerIsNotOwner(address account);
+    error NotAnOwner(address account);
     error InvalidAccessKey(bytes32 accessKey, bytes32 verifyingKey);
     error ExecutionForbidden();
     error ExecutionFailed(bytes payload, bytes returnData);
@@ -29,5 +30,5 @@ interface IStakingClaim {
         bytes32 accessKey
     );
     event Claimed(address indexed account, uint256 amount, uint256 claimedAt);
-    event SigChecked(bytes[] signatures);
+    event OwnerChanged(address indexed oldOwner, address indexed newOwner);
 }

@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 uint256 constant SIG_LENGTH = 65;
 
 error InvalidSignatureLength(bytes signature, uint256 length);
-error DuplicateSigner(address signer);
+error DuplicateSigner();
 
 library SignatureHelper {
     function extractSignaturesFromCalldataInput(
@@ -81,10 +81,23 @@ library SignatureHelper {
 
         for (uint256 i = 0; i < signatures.length; i++) {
             signers[i] = ECDSA.recover(digest, signatures[i]);
+        }
 
-            if (i > 0 && signers[i] == signers[i - 1]) {
-                revert DuplicateSigner(signers[i]);
+        if (hasDuplicates(signers)) {
+            revert DuplicateSigner();
+        }
+    }
+
+    function hasDuplicates(
+        address[] memory array
+    ) internal pure returns (bool) {
+        for (uint256 i = 0; i < array.length; i++) {
+            for (uint256 j = i + 1; j < array.length; j++) {
+                if (array[i] == array[j]) {
+                    return true;
+                }
             }
         }
+        return false;
     }
 }

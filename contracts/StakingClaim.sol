@@ -145,7 +145,7 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         if (!success) {
             // bubble up the revert reason from lower level call
             assembly {
-                // load the first 32 bytes of the `result` 
+                // load the first 32 bytes of the `result`
                 // which contains the length of the actual `result`
                 // and store it in `returnDataSize` variable
                 let returnDataSize := mload(result)
@@ -220,8 +220,30 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         return $._claims[account][accessKey];
     }
 
-    function getBaseToken() external view returns (address) {
-        return BASE_TOKEN;
+    /** Owners */
+    function changeOwner(
+        address currentOwner,
+        address newOwner
+    ) external onlyThisContract {
+        StakingClaimStorage storage $ = _getStakingClaimStorage();
+
+        // set ownerIndex to max value to check if owner was found
+        uint256 ownerIndex = type(uint256).max;
+
+        for (uint256 i = 0; i < $._owners.length; i++) {
+            if ($._owners[i] == currentOwner) {
+                ownerIndex = i;
+                break;
+            }
+        }
+
+        if (ownerIndex == type(uint256).max) {
+            revert NotAnOwner(currentOwner);
+        }
+
+        $._owners[ownerIndex] = newOwner;
+
+        emit OwnerChanged(currentOwner, newOwner);
     }
 
     function getOwners() external view returns (address[] memory) {
