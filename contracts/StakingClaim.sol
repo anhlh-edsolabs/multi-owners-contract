@@ -67,11 +67,18 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         Validation.noZeroAddress(secondOwner);
         Validation.noZeroAddress(thirdOwner);
 
+        // check if the owners are unique
+        address[] memory owners = new address[](3);
+        owners[0] = firstOwner;
+        owners[1] = secondOwner;
+        owners[2] = thirdOwner;
+
+        if (SignatureHelper.hasDuplicates(owners)) {
+            revert DuplicateSigner();
+        }
+
         StakingClaimStorage storage $ = _getStakingClaimStorage();
-        $._owners = new address[](3);
-        $._owners[0] = firstOwner;
-        $._owners[1] = secondOwner;
-        $._owners[2] = thirdOwner;
+        $._owners = owners;
     }
 
     modifier onlyThisContract() {
