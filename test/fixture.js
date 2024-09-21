@@ -4,11 +4,15 @@ const ethers = require("ethers");
 const hre = require("hardhat");
 const { log } = require("console");
 const { Helper } = require("./helper");
-const { access } = require("fs");
 
 async function init(printOutput = true) {
-    const [contractAdmin, firstOwner, secondOwner, thirdOwner, ...addrs] =
-        await hre.ethers.getSigners();
+    const [
+        contractAdmin,
+        firstOwner,
+        secondOwner,
+        thirdOwner,
+        ...addrs
+    ] = await hre.ethers.getSigners();
 
     // deploy mock WUSD
     const MockWUSDFactory = await hre.ethers.getContractFactory("MockToken");
@@ -98,4 +102,80 @@ async function createClaimData(
     return [accessKey, typedData];
 }
 
-module.exports = { init, createClaimData };
+async function createClaimDataMultiple(
+    domain,
+    claimers,
+    claimableTimestamps,
+    claimAmounts,
+) {
+    const stakingClaim = await hre.ethers.getContractFactory("StakingClaim");
+
+    const accessKeys = [];
+
+    const claimDataMultiple = claimers.map((claimer, index) => {
+        const claimableTimestamp = claimableTimestamps[index];
+        const claimAmount = claimAmounts[index];
+
+        const accessKey = ethers.solidityPackedKeccak256(
+            ["address", "uint48", "uint256"],
+            [claimer, claimableTimestamp, claimAmount],
+        );
+
+        accessKeys.push(accessKey);
+
+        return {
+            account: claimer,
+            claimableTimestamp,
+            amount: claimAmount,
+            accessKey,
+        };
+    });
+
+    const selector = stakingClaim.interface.getFunction(
+        "createClaimDataMultiple",
+    ).selector;
+
+    const inputData = ethers.AbiCoder.defaultAbiCoder().encode(
+        [
+            "tuple(address account,uint48 claimableTimestamp,uint256 amount,bytes32 accessKey)[]",
+        ],
+        [claimDataMultiple],
+    );
+
+    const payload = {
+        selector,
+        inputData,
+    };
+
+    const typedData = Helper.getTypedData(
+        domain,
+        Helper.FunctionCallType,
+        Object.keys(Helper.FunctionCallType)[0],
+        payload,
+    );
+
+    return [accessKeys, typedData];
+}
+
+function generateClaimData(numberOfClaims) {
+    const claimers = [];
+    const claimableTimestamps = [];
+    const claimAmounts = [];
+
+    for (let i = 0; i < numberOfClaims; i++) {
+        claimers.push(ethers.Wallet.createRandom().address);
+        claimableTimestamps.push(1725148800);
+        claimAmounts.push(ethers.parseUnits("1000", 6));
+    }
+
+    return [claimers, claimableTimestamps, claimAmounts];
+}
+
+module.exports = {
+    Fixtures: {
+        init,
+        createClaimData,
+        createClaimDataMultiple,
+        generateClaimData,
+    },
+};

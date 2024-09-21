@@ -4,6 +4,7 @@
 
 const FunctionCallType = {
     FunctionCall: [
+        { name: "nonce", type: "uint256" },
         { name: "selector", type: "bytes4" },
         { name: "inputData", type: "bytes" },
     ],
