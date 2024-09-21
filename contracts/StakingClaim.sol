@@ -50,6 +50,7 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address baseToken) {
+        Validation.noZeroAddress(baseToken);
         BASE_TOKEN = baseToken;
     }
 
