@@ -61,7 +61,7 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         address thirdOwner
     ) external initializer {
         __Base_init(initialAdmin);
-        __EIP712_init("StakingClaim", "1");
+        __EIP712_init("", "");
 
         Validation.noZeroAddress(firstOwner);
         Validation.noZeroAddress(secondOwner);
@@ -165,15 +165,20 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         uint256 amount,
         bytes32 accessKey
     ) public onlyThisContract {
-        _createClaim(account, claimableTimestamp, amount, accessKey);
+        StakingClaimStorage storage $ = _getStakingClaimStorage();
+
+        _createClaim($, account, claimableTimestamp, amount, accessKey);
     }
 
     function createClaimDataMultiple(
         ClaimData[] memory claimDataList
     ) public onlyThisContract {
+        StakingClaimStorage storage $ = _getStakingClaimStorage();
+
         for (uint256 i = 0; i < claimDataList.length; i++) {
             ClaimData memory claimData = claimDataList[i];
             _createClaim(
+                $,
                 claimData.account,
                 claimData.claimableTimestamp,
                 claimData.amount,
@@ -183,6 +188,7 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
     }
 
     function _createClaim(
+        StakingClaimStorage storage $,
         address account,
         uint48 claimableTimestamp,
         uint256 amount,
@@ -198,8 +204,6 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         if (accessKey != verifyingKey) {
             revert InvalidAccessKey(accessKey, verifyingKey);
         }
-
-        StakingClaimStorage storage $ = _getStakingClaimStorage();
 
         // check if claim already exists for this account and revert to prevent overwriting
         if ($._claims[account][accessKey].amount > 0) {
@@ -230,6 +234,7 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         // set ownerIndex to max value to check if owner was found
         uint256 ownerIndex = type(uint256).max;
 
+        // find the index of the current owner, if matched set ownerIndex to the index and exit loop
         for (uint256 i = 0; i < $._owners.length; i++) {
             if ($._owners[i] == currentOwner) {
                 ownerIndex = i;
@@ -237,10 +242,12 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
             }
         }
 
+        // if ownerIndex is still max value, then the currentOwner was not found
         if (ownerIndex == type(uint256).max) {
             revert NotAnOwner(currentOwner);
         }
 
+        // if the currenOwner was found, replace it with the newOwner
         $._owners[ownerIndex] = newOwner;
 
         emit OwnerChanged(currentOwner, newOwner);
@@ -271,6 +278,25 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
     }
 
     /*******************************************************/
+    /** EIP-712 overridden functions */
+    /**
+     * @dev The name parameter for the EIP712 domain.
+     *
+     * NOTE: This function is overridden to return a constant value to reduce gas costs
+     */
+    function _EIP712Name() internal pure override returns (string memory) {
+        return "StakingClaim";
+    }
+
+    /**
+     * @dev The version parameter for the EIP712 domain.
+     *
+     * NOTE: This function is overridden to return a constant value to reduce gas costs
+     */
+    function _EIP712Version() internal pure override returns (string memory) {
+        return "1";
+    }
+
     /** EIP-712 signature verification */
 
     function getEIP712FunctionCallStructHash(
@@ -305,7 +331,7 @@ contract StakingClaim is Base, EIP712Upgradeable, IStakingClaim {
         return MessageHashUtils.toTypedDataHash(domainSeparator, structHash);
     }
 
-    function recoverSigner(
+    function recoverSigners(
         bytes32 digest,
         bytes calldata combinedSignatures
     ) public pure returns (address[] memory) {

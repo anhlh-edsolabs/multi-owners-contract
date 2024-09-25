@@ -5,14 +5,17 @@ const hre = require("hardhat");
 const { log } = require("console");
 const { Helper } = require("./helper");
 
+const DEBUG = {
+    status: false
+}
+
+const testLog = (() => {
+	return DEBUG.status ? log : () => {};
+})();
+
 async function init(printOutput = true) {
-    const [
-        contractAdmin,
-        firstOwner,
-        secondOwner,
-        thirdOwner,
-        ...addrs
-    ] = await hre.ethers.getSigners();
+    const [contractAdmin, firstOwner, secondOwner, thirdOwner, ...addrs] =
+        await hre.ethers.getSigners();
 
     // deploy mock WUSD
     const MockWUSDFactory = await hre.ethers.getContractFactory("MockToken");
@@ -41,12 +44,12 @@ async function init(printOutput = true) {
     const stakingClaimAddress = stakingClaimContract.target;
 
     if (printOutput) {
-        log("Mock WUSD deployed at:", mockWUSDAddress);
-        log("StakingClaim deployed at:", stakingClaimAddress);
-        log("Contract admin address:", contractAdmin.address);
-        log("First owner address:", firstOwner.address);
-        log("Second owner address:", secondOwner.address);
-        log("Third owner address:", thirdOwner.address);
+        testLog("Mock WUSD deployed at:", mockWUSDAddress);
+        testLog("StakingClaim deployed at:", stakingClaimAddress);
+        testLog("Contract admin address:", contractAdmin.address);
+        testLog("First owner address:", firstOwner.address);
+        testLog("Second owner address:", secondOwner.address);
+        testLog("Third owner address:", thirdOwner.address);
     }
 
     return {
@@ -110,26 +113,7 @@ async function createClaimDataMultiple(
 ) {
     const stakingClaim = await hre.ethers.getContractFactory("StakingClaim");
 
-    const accessKeys = [];
-
-    const claimDataMultiple = claimers.map((claimer, index) => {
-        const claimableTimestamp = claimableTimestamps[index];
-        const claimAmount = claimAmounts[index];
-
-        const accessKey = ethers.solidityPackedKeccak256(
-            ["address", "uint48", "uint256"],
-            [claimer, claimableTimestamp, claimAmount],
-        );
-
-        accessKeys.push(accessKey);
-
-        return {
-            account: claimer,
-            claimableTimestamp,
-            amount: claimAmount,
-            accessKey,
-        };
-    });
+    const [accessKeys, claimDataMultiple] = generateClaimDataList(claimers, claimableTimestamps, claimAmounts);
 
     const selector = stakingClaim.interface.getFunction(
         "createClaimDataMultiple",
@@ -157,6 +141,31 @@ async function createClaimDataMultiple(
     return [accessKeys, typedData];
 }
 
+function generateClaimDataList(claimers, claimableTimestamps, claimAmounts) {
+    const accessKeys = [];
+
+    const claimDataMultiple = claimers.map((claimer, index) => {
+        const claimableTimestamp = claimableTimestamps[index];
+        const claimAmount = claimAmounts[index];
+
+        const accessKey = ethers.solidityPackedKeccak256(
+            ["address", "uint48", "uint256"],
+            [claimer, claimableTimestamp, claimAmount],
+        );
+
+        accessKeys.push(accessKey);
+
+        return {
+            account: claimer,
+            claimableTimestamp,
+            amount: claimAmount,
+            accessKey,
+        };
+    });
+
+    return [accessKeys, claimDataMultiple];
+}
+
 function generateClaimData(numberOfClaims) {
     const claimers = [];
     const claimableTimestamps = [];
@@ -172,10 +181,13 @@ function generateClaimData(numberOfClaims) {
 }
 
 module.exports = {
+    testLog,
+    DEBUG,
     Fixtures: {
         init,
         createClaimData,
         createClaimDataMultiple,
         generateClaimData,
+        generateClaimDataList,
     },
 };
